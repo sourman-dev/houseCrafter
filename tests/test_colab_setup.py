@@ -25,15 +25,19 @@ class TestColabSetup(unittest.TestCase):
             "pytorch3d",
             "flash-attn",
             "xformers==",
+            "open3d",
         ):
             self.assertNotIn(banned, text, banned)
 
     def test_colab_setup_uses_overlay_not_full_requirements(self):
         path = os.path.join(ROOT, "scripts", "colab_setup.sh")
-        text = open(path).read()
+        with open(path) as fh:
+            text = fh.read()
         self.assertIn("requirements-colab.txt", text)
         self.assertNotIn("pip install -r requirements.txt", text)
         self.assertNotIn("facebookresearch/pytorch3d", text)
+        self.assertIn("try_install", text)
+        self.assertIn("one-by-one", text)
 
     def test_notebook_cells_are_isolated(self):
         import json

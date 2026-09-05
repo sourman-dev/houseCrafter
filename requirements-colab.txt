@@ -1,6 +1,8 @@
-# Colab overlay for the Gradio app.
+# Colab overlay for the Gradio mock UI.
 # Do NOT pin torch/torchvision/xformers/flash-attn/pytorch3d.
-# Colab already ships a CUDA PyTorch; reinstalling it is slow and breaks the runtime.
+# Do NOT list open3d here: no wheel on Colab Python 3.13; one missing
+# package would abort the entire pip -r install (trimesh never installed).
+# Keep Colab's preinstalled CUDA PyTorch.
 
 gradio>=4.20.0
 gdown>=5.1.0
@@ -9,7 +11,6 @@ plyfile
 omegaconf
 einops
 opencv-python-headless
-open3d
 diffusers
 accelerate
 safetensors

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# HouseCrafter Colab setup: keep Colab's PyTorch, install wheels only.
-# Never compile pytorch3d / flash-attn from source.
+# HouseCrafter Colab setup: keep Colab PyTorch, install wheels one-by-one.
+# Never compile pytorch3d / flash-attn. Never abort the whole overlay
+# because one optional package (open3d) has no cp313 wheel.
 
-set -euo pipefail
+set -uo pipefail
 
 echo "============================================================"
 echo " HouseCrafter Colab setup (wheels only, no compile)"
@@ -31,16 +32,43 @@ if [ ! -f "$REQ_FILE" ]; then
   exit 1
 fi
 
-echo "[*] Installing Colab overlay packages (no torch reinstall)..."
-python3 -m pip install -q --upgrade pip
-python3 -m pip install -q -r "$REQ_FILE"
+echo "[*] Upgrading pip..."
+python3 -m pip install -q --upgrade pip || true
+
+try_install() {
+  local pkg="$1"
+  if python3 -m pip install -q "$pkg"; then
+    echo "  OK  ${pkg}"
+    return 0
+  fi
+  echo "  SKIP ${pkg} (no wheel for this Python — mock UI still works)"
+  return 0
+}
+
+echo "[*] Installing overlay packages one-by-one..."
+while IFS= read -r raw || [ -n "$raw" ]; do
+  pkg="${raw%%#*}"
+  pkg="${pkg#"${pkg%%[![:space:]]*}"}"
+  pkg="${pkg%"${pkg##*[![:space:]]}"}"
+  [ -z "$pkg" ] && continue
+  try_install "$pkg"
+done < "$REQ_FILE"
+
+echo "[*] Optional Open3D (often missing on Python 3.13)..."
+try_install "open3d"
 
 echo "[*] Skipping pytorch3d / flash-attn / xformers / pinned torch."
-echo "    Gradio --mock does not need them. Full diffusion needs checkpoints."
 
 mkdir -p ckpts dataRelease gen_rgbd generated_data_v0 \
   outputs/Gradio/houseCrafter/output
 
-echo "============================================================"
-echo " Ready. Launch: python app.py --mock --share"
-echo "============================================================"
+echo "[*] Verifying Gradio (required for the UI)..."
+if python3 -c "import gradio; print('gradio', gradio.__version__)"; then
+  echo "============================================================"
+  echo " Ready. Launch: python app.py --mock --share"
+  echo "============================================================"
+  exit 0
+fi
+
+echo "[FAIL] gradio did not import. Retry: pip install gradio"
+exit 1
