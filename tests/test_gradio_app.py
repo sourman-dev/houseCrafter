@@ -1,5 +1,6 @@
 """Unit tests for HouseCrafter Gradio UI Interface."""
 
+import os
 import shutil
 import tempfile
 import unittest
@@ -41,6 +42,23 @@ class TestGradioInterface(unittest.TestCase):
 
         self.assertIsInstance(demo, gr.Blocks)
         self.assertEqual(demo.title, "HouseCrafter 3D")
+
+    def test_tabs_are_wrapped(self):
+        root = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..")
+        )
+        with open(os.path.join(root, "gradio_ui", "interface.py")) as fh:
+            text = fh.read()
+        self.assertIn("with gr.Tabs():", text)
+
+    def test_app_puts_src_on_path_and_allows_no_fp16(self):
+        root = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..")
+        )
+        with open(os.path.join(root, "app.py")) as fh:
+            text = fh.read()
+        self.assertIn("SRC_ROOT", text)
+        self.assertIn("BooleanOptionalAction", text)
 
 
 if __name__ == "__main__":

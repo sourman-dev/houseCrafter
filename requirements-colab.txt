@@ -1,0 +1,24 @@
+# Colab overlay for the Gradio app.
+# Do NOT pin torch/torchvision/xformers/flash-attn/pytorch3d.
+# Colab already ships a CUDA PyTorch; reinstalling it is slow and breaks the runtime.
+
+gradio>=4.20.0
+gdown>=5.1.0
+trimesh
+plyfile
+omegaconf
+einops
+opencv-python-headless
+open3d
+diffusers
+accelerate
+safetensors
+tqdm
+pyyaml
+matplotlib
+imageio
+lmdb
+networkx
+scikit-image
+lpips
+fire

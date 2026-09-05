@@ -260,62 +260,22 @@ class HouseCrafterBridge(BaseHouseCrafterBridge):
         seed: int = -1,
         progress_callback: Optional[Callable[[float, str], None]] = None,
     ) -> Generator[Tuple[float, str, Optional[GenerationResult]], None, None]:
-        start_time = time.time()
         if not scene_id:
             scene_id = f"scene_{int(time.time())}"
 
-        # Fallback to mock if checkpoint missing
-        if not os.path.exists(self.ckpt_path):
-            print(f"[Notice] Checkpoint {self.ckpt_path} missing. Using Mock.")
-            mock = MockHouseCrafterBridge()
-            yield from mock.generate(
-                floorplan_input=floorplan_input,
-                scene_id=scene_id,
-                num_steps=num_steps,
-                guidance_scale=guidance_scale,
-                depth_threshold=depth_threshold,
-                tsdf_voxel_size=tsdf_voxel_size,
-                seed=seed,
-            )
-            return
-
-        self.load_models()
-
-        yield 0.10, "Preprocessing 2D floorplan layout condition...", None
-        scene_out_dir = os.path.join(self.out_dir, scene_id)
-        os.makedirs(scene_out_dir, exist_ok=True)
-
-        yield 0.40, f"Sampling multi-view RGB-D images ({num_steps} steps)...", None
-        raw_ply_path = os.path.join(scene_out_dir, f"{scene_id}_tsdf.ply")
-        create_sample_room_ply(raw_ply_path, num_points=50000)
-
-        yield 0.80, "Running TSDF Fusion and Connected Components...", None
-        opt_ply_path = os.path.join(scene_out_dir, f"{scene_id}.ply")
-        optimize_ply_for_web(
-            raw_ply_path, opt_ply_path, voxel_size=tsdf_voxel_size
+        # generate_scene.py + TSDF fusion are not hooked into this UI yet.
+        # Loading checkpoints here would pull pytorch3d/xformers and crash Colab.
+        print(
+            "[Notice] HouseCrafterBridge has no generate_scene hook. "
+            "Serving MockHouseCrafterBridge so the Gradio UI stays usable."
         )
-
-        duration = time.time() - start_time
-        meta = {
-            "scene_id": scene_id,
-            "inference_mode": "cuda_diffusion",
-            "duration_seconds": round(duration, 2),
-            "ddim_steps": num_steps,
-            "guidance_scale": guidance_scale,
-            "depth_threshold": depth_threshold,
-            "tsdf_voxel_size": tsdf_voxel_size,
-            "seed": seed,
-            **get_ply_metadata(opt_ply_path),
-        }
-
-        result = GenerationResult(
+        mock = MockHouseCrafterBridge()
+        yield from mock.generate(
+            floorplan_input=floorplan_input,
             scene_id=scene_id,
-            ply_path=opt_ply_path,
-            glb_path=None,
-            rgb_images=[],
-            depth_images=[],
-            metadata=meta,
-            status="success",
+            num_steps=num_steps,
+            guidance_scale=guidance_scale,
+            depth_threshold=depth_threshold,
+            tsdf_voxel_size=tsdf_voxel_size,
+            seed=seed,
         )
-
-        yield 1.0, f"Finished 3D generation in {duration:.1f}s!", result

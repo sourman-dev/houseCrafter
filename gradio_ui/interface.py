@@ -82,8 +82,11 @@ def build_interface(
             with gr.Column(scale=7):
                 gr.Markdown("### 2️⃣ 3D Model & Multi-View Inspection")
                 model_viewer, download_file = build_output_viewer()
-                rgb_gallery, depth_gallery = build_multi_view_galleries()
-                sync_markdown = build_sync_and_metadata_panel()
+                with gr.Tabs():
+                    rgb_gallery, depth_gallery = (
+                        build_multi_view_galleries()
+                    )
+                    sync_markdown = build_sync_and_metadata_panel()
 
         # ==================== EVENT HANDLERS ====================
 

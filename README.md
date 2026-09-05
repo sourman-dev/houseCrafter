@@ -28,18 +28,20 @@ Official PyTorch implementation for **HouseCrafter**, a novel approach for gener
 Experience HouseCrafter directly in your browser with an interactive 3D viewer and automatic Google Drive synchronization!
 
 ### Option A: Run on Google Colab (1-Click)
-Click the badge below to launch the turn-key starter notebook:
+Click the badge below to launch the starter notebook:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/neu-vi/houseCrafter/blob/feat/gradio-colab-ui/notebooks/HouseCrafter_Gradio_Colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sourman-dev/houseCrafter/blob/feat/gradio-colab-ui/notebooks/HouseCrafter_Gradio_Colab.ipynb)
 
-The Colab notebook automatically:
-1. Mounts your Google Drive.
-2. Clones this repository (`feat/gradio-colab-ui` branch).
-3. Installs all required PyTorch, CUDA, and Gradio dependencies.
-4. Downloads pre-trained model weights into `ckpts/` and sample layouts into `dataRelease/`.
-5. Launches the Gradio web application with a public share link (`https://xxxx.gradio.live`).
-6. Automatically syncs all output `.ply` models, multi-view RGB-D views, and metadata to your Google Drive at:
-   `Google Drive -> Gradio/houseCrafter/output/`
+Push `feat/gradio-colab-ui` first, then run the notebook on a **GPU** runtime.
+
+**Do not** `pip install -r requirements.txt` on Colab (it pins `torch==2.1.0` and compiles `pytorch3d` / `flash-attn`). The notebook uses `requirements-colab.txt` + `scripts/colab_setup.sh` (wheels only, keeps Colab's PyTorch).
+
+The notebook:
+1. Mounts Google Drive and creates `Gradio/houseCrafter/output`.
+2. Clones this fork and checks out `feat/gradio-colab-ui`.
+3. Installs Gradio / Open3D / overlay wheels (~1–3 min).
+4. Launches `python app.py --mock --share`.
+5. Syncs `.ply` outputs to Drive `Gradio/houseCrafter/output/`.
 
 ### Option B: Run Locally
 

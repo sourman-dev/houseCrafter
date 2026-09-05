@@ -9,10 +9,12 @@ import argparse
 import os
 import sys
 
-# Ensure project root is in sys.path
+# Ensure project root and src/ are on sys.path (generation_utils lives in src/)
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
+SRC_ROOT = os.path.join(PROJECT_ROOT, "src")
+for path in (PROJECT_ROOT, SRC_ROOT):
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 from gradio_ui.interface import build_interface  # noqa: E402
 from gradio_ui.pipeline_bridge import (  # noqa: E402
@@ -71,9 +73,9 @@ def parse_args():
     )
     parser.add_argument(
         "--fp16",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=True,
-        help="Enable FP16 precision for diffusion inference",
+        help="FP16 diffusion weights (use --no-fp16 for FP32)",
     )
     return parser.parse_args()
 

@@ -1,49 +1,46 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# HouseCrafter Google Colab Environment Setup Script
-# Installs dependencies, sets up PyTorch3D, and prepares folders.
-# ==============================================================================
+# HouseCrafter Colab setup: keep Colab's PyTorch, install wheels only.
+# Never compile pytorch3d / flash-attn from source.
 
-set -e
+set -euo pipefail
 
 echo "============================================================"
-echo " 🚀 Setting up HouseCrafter Environment for Google Colab"
+echo " HouseCrafter Colab setup (wheels only, no compile)"
 echo "============================================================"
 
-# 1. Verify GPU
-echo "[*] Checking GPU..."
-if command -v nvidia-smi &> /dev/null; then
-    nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+if command -v nvidia-smi >/dev/null 2>&1; then
+  nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 else
-    echo "[!] Warning: No GPU detected. Running in CPU/Mock mode."
+  echo "[!] No GPU detected. Use --mock when launching the app."
 fi
 
-# 2. Install pip dependencies
-echo "[*] Installing Python packages from requirements.txt..."
-pip install -r requirements.txt --quiet || pip install -r requirements.txt
+echo "[*] Preinstalled PyTorch (must keep):"
+python3 - <<'PY'
+import sys
+print("python", sys.version.split()[0])
+try:
+    import torch
+    print("torch", torch.__version__, "cuda", torch.cuda.is_available())
+except Exception as exc:
+    print("torch missing:", exc)
+PY
 
-# 3. Ensure UI and 3D packages
-echo "[*] Installing Gradio, Open3D, Trimesh, and gdown..."
-pip install gradio>=4.20.0 open3d trimesh gdown plyfile pyngrok --quiet
+REQ_FILE="requirements-colab.txt"
+if [ ! -f "$REQ_FILE" ]; then
+  echo "[FAIL] ${REQ_FILE} not found. Run this script from the repo root."
+  exit 1
+fi
 
-# 4. Attempt PyTorch3D wheel installation
-echo "[*] Configuring PyTorch3D..."
-python3 -c "import pytorch3d" 2>/dev/null && echo "  [OK] PyTorch3D already available." || {
-    echo "  [*] Installing PyTorch3D precompiled wheel..."
-    pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py310_cu121_pyt210/download.html || {
-        echo "  [!] Precompiled wheel not matching, trying pip install pytorch3d..."
-        pip install pytorch3d || echo "  [!] PyTorch3D install skipped (fallback active)."
-    }
-}
+echo "[*] Installing Colab overlay packages (no torch reinstall)..."
+python3 -m pip install -q --upgrade pip
+python3 -m pip install -q -r "$REQ_FILE"
 
-# 5. Create directories
-echo "[*] Preparing workspace directories..."
-mkdir -p ckpts
-mkdir -p dataRelease
-mkdir -p gen_rgbd
-mkdir -p generated_data_v0
-mkdir -p outputs/Gradio/houseCrafter/output
+echo "[*] Skipping pytorch3d / flash-attn / xformers / pinned torch."
+echo "    Gradio --mock does not need them. Full diffusion needs checkpoints."
+
+mkdir -p ckpts dataRelease gen_rgbd generated_data_v0 \
+  outputs/Gradio/houseCrafter/output
 
 echo "============================================================"
-echo " ✅ HouseCrafter environment is ready!"
+echo " Ready. Launch: python app.py --mock --share"
 echo "============================================================"

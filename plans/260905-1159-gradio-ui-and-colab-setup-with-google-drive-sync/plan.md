@@ -13,9 +13,9 @@ branch: "feat/gradio-colab-ui"
 
 ## Executive Summary
 This project equips the HouseCrafter 3D indoor scene generation codebase with:
-1. **Interactive Gradio Web UI/UX**: Allows users to upload a 2D ground floorplan (or select preset layout scenes), configure inference parameters, generate multi-view RGB-D views via the 2D diffusion model, fuse them via TSDF into a 3D representation, and view/download the resulting `.ply` point cloud / mesh interactively in the browser.
-2. **Google Drive Auto-Sync**: Automatically detects the runtime environment (Google Colab or Local) and synchronizes all generated artifacts (3D `.ply` models, multi-view RGB images, depth maps, camera poses, and metadata JSON) to `Gradio/houseCrafter/output` on Google Drive, creating the folder automatically if it doesn't already exist.
-3. **Google Colab Starter Notebook (`notebooks/HouseCrafter_Gradio_Colab.ipynb`)**: A turn-key Jupyter notebook that mounts Google Drive, clones the repository from GitHub on branch `feat/gradio-colab-ui`, installs all CUDA/PyTorch/PyTorch3D dependencies, downloads pre-trained checkpoints/sample data, and launches the Gradio UI with a public URL (`share=True`).
+1. **Interactive Gradio Web UI/UX**: Upload a 2D floorplan or pick a preset, then view a `.ply` in `gr.Model3D`. **Current ship: mock RGB-D + synthetic room PLY.** `generate_scene.py` / TSDF fusion are not hooked into `HouseCrafterBridge.generate` yet.
+2. **Google Drive Auto-Sync**: Detect Colab (`/content/drive/MyDrive`) or fall back to `./outputs/Gradio/houseCrafter/output`, auto-create `Gradio/houseCrafter/output`.
+3. **Colab notebook**: Mount Drive, clone `feat/gradio-colab-ui`, install **`requirements-colab.txt` wheels only** (keep Colab PyTorch). **Do not** `pip install -r requirements.txt` or compile PyTorch3D. Launch `python app.py --mock --share`.
 
 ---
 
@@ -138,4 +138,18 @@ houseCrafter/
 - Contradictions found: 0
 - Stale references: 0
 - Status: **Valid and Ready for Implementation**
+
+## Implementation Audit (2026-09-05)
+
+Plan steps that were wrong or over-claimed:
+
+| Plan step | Defect | Fix |
+|---|---|---|
+| Phase 5 / exec summary: install CUDA + PyTorch3D | `requirements.txt` pins torch 2.1 / flash-attn / pytorch3d; Colab compile hung 10+ min | `requirements-colab.txt` + `scripts/colab_setup.sh` wheels-only |
+| Phase 2: real `generate_scene.py` + TSDF in Gradio | `HouseCrafterBridge.generate` never called the engine; labeled synthetic PLY as `cuda_diffusion` | Honest mock until the hook exists |
+| Phase 4: RGB/Depth/Sync tabs | `gr.Tab` without parent `gr.Tabs()` | Wrap in `with gr.Tabs()` in `interface.py` |
+| Phase 4 CLI `--fp16` | `store_true` + `default=True` cannot select FP32 | `BooleanOptionalAction` (`--no-fp16`) |
+| `app.py` imports | `src/` not on `sys.path`; `generation_utils` would fail | Insert `SRC_ROOT` |
+
+Still open: wire `src/generate_scene.py` + `recon_utils/fuse_gen_data.py` into `HouseCrafterBridge.generate`. Until then Colab must stay `--mock`.
 <!-- slug: gradio-ui-and-colab-setup-with-google-drive-sync -->
