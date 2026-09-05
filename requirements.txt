@@ -47,3 +47,9 @@ hydra-core
 webdataset==0.2.83
 lpips==0.1.4
 fire==0.5.0
+
+# Web UI and Colab utilities
+gradio>=4.20.0
+gdown>=5.1.0
+plyfile>=1.0.0
+pyngrok>=7.0.0

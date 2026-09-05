@@ -2,6 +2,7 @@
 
 <div align="center">
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/neu-vi/houseCrafter/blob/feat/gradio-colab-ui/notebooks/HouseCrafter_Gradio_Colab.ipynb)
 [![Project Page](https://img.shields.io/badge/Project-Page-blue)](https://neu-vi.github.io/houseCrafter/)
 [![arXiv](https://img.shields.io/badge/arXiv-2406.20077-b31b1b.svg)](https://arxiv.org/abs/2406.20077)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -21,6 +22,62 @@
 Official PyTorch implementation for **HouseCrafter**, a novel approach for generating 3D indoor scenes from 2D floorplan layouts using diffusion models. Our method generates high-quality RGBD images from multiple viewpoints and fuses them into coherent 3D scene representations.
 
 🌐 **Project Page**: [https://neu-vi.github.io/houseCrafter/](https://neu-vi.github.io/houseCrafter/)
+
+## 🚀 Gradio Web UI & Google Colab Quickstart
+
+Experience HouseCrafter directly in your browser with an interactive 3D viewer and automatic Google Drive synchronization!
+
+### Option A: Run on Google Colab (1-Click)
+Click the badge below to launch the turn-key starter notebook:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/neu-vi/houseCrafter/blob/feat/gradio-colab-ui/notebooks/HouseCrafter_Gradio_Colab.ipynb)
+
+The Colab notebook automatically:
+1. Mounts your Google Drive.
+2. Clones this repository (`feat/gradio-colab-ui` branch).
+3. Installs all required PyTorch, CUDA, and Gradio dependencies.
+4. Downloads pre-trained model weights into `ckpts/` and sample layouts into `dataRelease/`.
+5. Launches the Gradio web application with a public share link (`https://xxxx.gradio.live`).
+6. Automatically syncs all output `.ply` models, multi-view RGB-D views, and metadata to your Google Drive at:
+   `Google Drive -> Gradio/houseCrafter/output/`
+
+### Option B: Run Locally
+
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Launch the Gradio application:
+```bash
+# Full GPU inference:
+python app.py
+
+# Public sharing link (e.g. for remote servers):
+python app.py --share
+
+# Fast mock test mode (no GPU / weights required):
+python app.py --mock --port 7860
+```
+
+3. Open `http://localhost:7860` in your browser.
+
+### 📂 Google Drive Output Structure
+Whenever a 3D scene is generated, artifacts are automatically persisted to `Gradio/houseCrafter/output/`:
+```
+Gradio/houseCrafter/output/
+├── output_index.json                    # Summary of all generated scenes
+└── scene_YYYYMMDD_HHMMSS_<scene_id>/
+    ├── <scene_id>.ply                   # Cleaned 3D indoor scene point cloud / mesh
+    ├── input_floorplan.png              # 2D ground floor plan input
+    ├── rgb_views/                       # Multi-view RGB images
+    │   ├── view_00.png
+    │   └── ...
+    ├── depth_views/                     # Multi-view depth maps
+    │   ├── depth_00.png
+    │   └── ...
+    └── metadata.json                    # Generation parameters, vertex count, and execution time
+```
 
 ## Installation
 

@@ -296,3 +296,7 @@ dependencies:
     - yarl==1.9.3
     - youtube-dl==2021.12.17
     - zipp==3.17.0
+    - gradio>=4.20.0
+    - gdown>=5.1.0
+    - plyfile>=1.0.0
+    - pyngrok>=7.0.0
