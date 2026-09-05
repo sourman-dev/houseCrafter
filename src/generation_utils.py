@@ -207,7 +207,10 @@ def make_pipeline(
 
     pipeline = pipeline.to("cuda")
     pipeline.set_progress_bar_config(disable=True)
-    pipeline.enable_xformers_memory_efficient_attention()
+    try:
+        pipeline.enable_xformers_memory_efficient_attention()
+    except Exception as exc:
+        print(f"[Notice] xformers not enabled ({exc})")
     return pipeline
 
 
