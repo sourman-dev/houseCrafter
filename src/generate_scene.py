@@ -458,7 +458,7 @@ def main_ddim_inversion(
     # graph_with_wall will be the nodes that contain the target view with furnitures and walls
     graph, cond_view, des_db, graph_with_wall, furniture_graph = setup_out_db(dataset, scene_id, anchors = self_defiend_anchors)
     keys = set(list(graph.nodes))
-    if check_compeleted(os.path.join(output_dir, "db", scene_id), keys):
+    if check_compeleted(os.path.join(output_dir, "db", scene_id), keys, db=des_db):
         print(f"scene {scene_id} is already completed")
         return
     depth_func = lambda x: depth_model.infer(x[None, ...])["depth"][0, 0]
@@ -661,25 +661,35 @@ def check_completed2(out_dir, scene_id):
     return os.path.exists(json_path)
 
 
-def check_compeleted(db_path, keys):
-    if not os.path.exists(db_path):
-        return False
-    db = lmdb.open(db_path, readonly=True, lock=False, readahead=False, meminit=False)
-    with db.begin() as txn:
-        exist_keys = list(txn.cursor().iternext(values=False))
-        exist_keys = [key.decode() for key in exist_keys]
-        depth_keys = [key for key in exist_keys if key.endswith("_depth")]
-        img_keys = [key for key in exist_keys if key.endswith("_rgb")]
-        pose_keys = [key for key in exist_keys if key.endswith("_pose")]
-        remain_poses = keys - set([key.replace("_pose", "") for key in pose_keys])
-        remain_imgs = keys - set([key.replace("_rgb", "") for key in img_keys])
-        remain_depths = keys - set([key.replace("_depth", "") for key in depth_keys])
-
-    return (
-        (len(remain_poses) == 0)
-        and (len(remain_imgs) == 0)
-        and (len(remain_depths) == 0)
-    )
+def check_compeleted(db_path, keys, db=None):
+    close_after = False
+    if db is None:
+        if not os.path.exists(db_path):
+            return False
+        db = lmdb.open(
+            db_path, readonly=True, lock=False, readahead=False, meminit=False
+        )
+        close_after = True
+    try:
+        with db.begin() as txn:
+            exist_keys = list(txn.cursor().iternext(values=False))
+            exist_keys = [key.decode() for key in exist_keys]
+            depth_keys = [key for key in exist_keys if key.endswith("_depth")]
+            img_keys = [key for key in exist_keys if key.endswith("_rgb")]
+            pose_keys = [key for key in exist_keys if key.endswith("_pose")]
+            remain_poses = keys - set([key.replace("_pose", "") for key in pose_keys])
+            remain_imgs = keys - set([key.replace("_rgb", "") for key in img_keys])
+            remain_depths = keys - set(
+                [key.replace("_depth", "") for key in depth_keys]
+            )
+        return (
+            (len(remain_poses) == 0)
+            and (len(remain_imgs) == 0)
+            and (len(remain_depths) == 0)
+        )
+    finally:
+        if close_after:
+            db.close()
 
 
 if __name__ == "__main__":
