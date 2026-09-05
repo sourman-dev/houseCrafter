@@ -741,7 +741,14 @@ if __name__ == "__main__":
         vae_ft="../ckpts/vae-ft-mse-840000-ema-pruned.ckpt",
     )
     def _patch_unidepth_jit(hub_root):
-        for dirpath, _, files in os.walk(hub_root):
+        for dirpath, dirnames, files in os.walk(hub_root):
+            if "__pycache__" in dirnames:
+                pyc = os.path.join(dirpath, "__pycache__")
+                for fn in os.listdir(pyc) if os.path.isdir(pyc) else []:
+                    try:
+                        os.remove(os.path.join(pyc, fn))
+                    except OSError:
+                        pass
             for fn in files:
                 if not fn.endswith(".py"):
                     continue
@@ -753,6 +760,11 @@ if __name__ == "__main__":
                 if new != txt:
                     with open(path, "w") as fh:
                         fh.write(new)
+
+    try:
+        import wandb  # noqa: F401
+    except ImportError:
+        os.system(f"{sys.executable} -m pip install -q wandb")
 
     try:
         depth_model = torch.hub.load(

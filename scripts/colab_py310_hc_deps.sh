@@ -96,8 +96,8 @@ then
   echo "  OK  torch-scatter"
 else
   try_install torch-scatter
-fi
 try_install pandas
+try_install wandb
 
 "${PY}" - <<'PY'
 import importlib
