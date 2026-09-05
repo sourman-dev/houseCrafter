@@ -771,7 +771,7 @@ if __name__ == "__main__":
             "lpiccinelli-eth/UniDepth",
             "UniDepth",
             version="v1",
-            backbone="ViTL14",
+            backbone="vitl14",
             pretrained=True,
             trust_repo=True,
         )
@@ -786,7 +786,7 @@ if __name__ == "__main__":
             "UniDepth",
             source="local",
             version="v1",
-            backbone="ViTL14",
+            backbone="vitl14",
             pretrained=True,
             trust_repo=True,
         )
