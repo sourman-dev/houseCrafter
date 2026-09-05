@@ -716,14 +716,31 @@ if __name__ == "__main__":
 
     # Store data_root in cfg for later use
     cfg.data_root = data_root
-    
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    label_csv = os.path.join(repo_root, "assets", "blender_label_mapping.csv")
+
     cfg.data.params.val_scene_ids = f"{data_root}/val_scenes_300_3000.json"
     cfg.data.params.layout_dir = f"{data_root}/layout_samples"
     cfg.data.params.val_dir = f"{data_root}/rendered_floor_sample"
-    
     cfg.data.params.return_depth_input = False  # ddim inversion
     cfg.data.params.graph_dir = f"{data_root}/graph_poses_all"
     cfg.data.params.curation_meta = f"{data_root}/wall_info_all"
+    cfg.data.params.layout_label_ids = label_csv
+    if os.path.exists(f"{data_root}/poses_all"):
+        cfg.data.params.pose_dir = f"{data_root}/poses_all"
+    else:
+        cfg.data.params.pose_dir = None
+
+    try:
+        ds0 = cfg.data.params.datasets_cfg[0].params
+        ds0.val_scene_ids = cfg.data.params.val_scene_ids
+        ds0.layout_dir = cfg.data.params.layout_dir
+        ds0.val_dir = cfg.data.params.val_dir
+        ds0.graph_dir = cfg.data.params.graph_dir
+        ds0.curation_meta = cfg.data.params.curation_meta
+        ds0.pose_dir = cfg.data.params.pose_dir
+    except Exception:
+        pass
 
     ddim_inversion = False
     weight_dtype = torch.float16
