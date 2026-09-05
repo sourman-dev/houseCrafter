@@ -53,7 +53,7 @@ class TestColabSetup(unittest.TestCase):
         self.assertNotIn("Clone the repository", code)
         self.assertNotIn("pip install -r requirements.txt", code)
         self.assertIn("scripts/colab_setup.sh", code)
-        self.assertIn("--mock", code)
+        self.assertIn("app.py --share", code)
 
 
 if __name__ == "__main__":

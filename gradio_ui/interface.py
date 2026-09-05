@@ -15,6 +15,7 @@ from gradio_ui.components import (
 from gradio_ui.pipeline_bridge import BaseHouseCrafterBridge, GenerationResult
 from gradio_ui.preset_loader import PresetLoader
 from gradio_ui.styles import CUSTOM_CSS
+from src.utils.floorplan_lift import fetch_floorplan_image
 from src.utils.gdrive_manager import GDriveSyncManager
 
 
@@ -50,7 +51,7 @@ def build_interface(
         with gr.Row():
             # ----------------- LEFT COLUMN: INPUTS -----------------
             with gr.Column(scale=5):
-                gr.Markdown("### 1️⃣ Provide 2D Ground Floor Plan")
+                gr.Markdown("### 1. 2D ground floor plan")
                 (
                     input_mode_radio,
                     custom_image_input,
@@ -58,6 +59,10 @@ def build_interface(
                     preset_preview_image,
                     upload_group,
                     preset_group,
+                    url_group,
+                    url_box,
+                    url_preview,
+                    fetch_btn,
                 ) = build_input_components(preset_loader)
 
                 settings = build_advanced_settings()
@@ -91,16 +96,16 @@ def build_interface(
         # ==================== EVENT HANDLERS ====================
 
         def on_input_mode_change(mode: str):
-            is_upload = mode == "Upload Custom 2D Floorplan"
             return (
-                gr.update(visible=is_upload),
-                gr.update(visible=not is_upload),
+                gr.update(visible=mode == "Upload image"),
+                gr.update(visible=mode == "Preset sample"),
+                gr.update(visible=mode == "Paste image URL"),
             )
 
         input_mode_radio.change(
             fn=on_input_mode_change,
             inputs=[input_mode_radio],
-            outputs=[upload_group, preset_group]
+            outputs=[upload_group, preset_group, url_group],
         )
 
         def on_preset_select(preset_id: str):
@@ -112,46 +117,75 @@ def build_interface(
         preset_dropdown.change(
             fn=on_preset_select,
             inputs=[preset_dropdown],
-            outputs=[preset_preview_image]
+            outputs=[preset_preview_image],
+        )
+
+        def on_fetch_url(url: str):
+            if not url or not url.strip():
+                raise gr.Error("Paste an image URL first.")
+            path = fetch_floorplan_image(url.strip(), "outputs/url_cache")
+            return path
+
+        fetch_btn.click(
+            fn=on_fetch_url,
+            inputs=[url_box],
+            outputs=[url_preview],
         )
 
         def run_generation(
             mode: str,
             custom_img: str,
             preset_id: str,
+            url_text: str,
+            url_img: str,
             num_steps: int,
             guidance_scale: float,
             depth_threshold: float,
             tsdf_voxel_size: float,
             seed: int,
             auto_sync: bool,
-            progress=gr.Progress(track_tqdm=False)
+            progress=gr.Progress(track_tqdm=False),
         ) -> Generator[Tuple, None, None]:
-            # Determine active floorplan path
-            if mode == "Upload Custom 2D Floorplan":
+            floorplan_path = None
+            scene_name = "scene"
+            if mode == "Upload image":
                 floorplan_path = custom_img
-                if custom_img and os.path.exists(custom_img):
-                    mtime = int(os.path.getmtime(custom_img))
-                    scene_name = f"custom_{mtime}"
-                else:
-                    scene_name = "custom_upload"
+                scene_name = "upload"
+            elif mode == "Paste image URL":
+                if url_img and os.path.exists(str(url_img)):
+                    floorplan_path = url_img
+                elif url_text and url_text.strip():
+                    try:
+                        floorplan_path = fetch_floorplan_image(
+                            url_text.strip(), "outputs/url_cache"
+                        )
+                    except Exception as exc:
+                        yield (
+                            f"Could not download image: {exc}",
+                            None,
+                            None,
+                            [],
+                            [],
+                            str(exc),
+                        )
+                        return
+                scene_name = "url"
             else:
                 preset = preset_loader.get_preset_by_id(preset_id)
                 floorplan_path = preset["image_path"] if preset else None
-                scene_name = preset_id
+                scene_name = preset_id or "preset"
 
-            if not floorplan_path or not os.path.exists(floorplan_path):
+            if not floorplan_path or not os.path.exists(str(floorplan_path)):
                 yield (
-                    "⚠️ **Error**: Please upload a floorplan or choose a preset.",
+                    "Need a floorplan: paste a URL, upload a file, or pick a preset.",
                     None,
                     None,
                     [],
                     [],
-                    "❌ Invalid or missing 2D floorplan input."
+                    "Missing 2D floorplan input.",
                 )
                 return
 
-            # Execute generation generator
             final_res: GenerationResult = None
             gen = bridge.generate(
                 floorplan_input=floorplan_path,
@@ -235,6 +269,8 @@ def build_interface(
                 input_mode_radio,
                 custom_image_input,
                 preset_dropdown,
+                url_box,
+                url_preview,
                 settings["num_steps"],
                 settings["guidance_scale"],
                 settings["depth_threshold"],

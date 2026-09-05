@@ -12,8 +12,11 @@ from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 import numpy as np
 from PIL import Image, ImageDraw
 
+from src.utils.floorplan_lift import (
+    lift_floorplan_to_ply,
+    make_preview_views,
+)
 from src.utils.ply_converter import (
-    create_sample_room_ply,
     get_ply_metadata,
     optimize_ply_for_web,
 )
@@ -117,33 +120,23 @@ class MockHouseCrafterBridge(BaseHouseCrafterBridge):
     ) -> Generator[Tuple[float, str, Optional[GenerationResult]], None, None]:
         start_time = time.time()
         if not scene_id:
-            scene_id = f"mock_{int(time.time())}"
+            scene_id = f"plan_{int(time.time())}"
 
         scene_dir = os.path.join(self.cache_dir, scene_id)
         os.makedirs(scene_dir, exist_ok=True)
 
-        # Step 1: Preprocessing
-        yield 0.15, "Preprocessing 2D floorplan layout & camera poses...", None
-        time.sleep(0.3)
+        yield 0.15, "Reading 2D ground-floor image...", None
+        if not floorplan_input or not os.path.exists(str(floorplan_input)):
+            raise FileNotFoundError("No floorplan image on disk")
 
-        # Step 2: Multi-View Diffusion
-        msg = f"Generating multi-view RGB-D with diffusion ({num_steps} steps)..."
-        yield 0.45, msg, None
-        rgb_paths, depth_paths = self._generate_mock_views(
-            scene_id, num_views=6
-        )
-        time.sleep(0.4)
+        yield 0.45, "Extruding walls and rooms from the floorplan...", None
+        rgb_paths, depth_paths = make_preview_views(str(floorplan_input), scene_dir)
 
-        # Step 3: TSDF Fusion
-        yield 0.75, "Performing TSDF fusion & point cloud extraction...", None
+        yield 0.75, "Building 3D point cloud (.ply)...", None
         raw_ply_path = os.path.join(scene_dir, f"{scene_id}_raw.ply")
-        create_sample_room_ply(
-            raw_ply_path, room_size=(4.0, 2.8, 5.0), num_points=30000
-        )
-        time.sleep(0.3)
+        lift_floorplan_to_ply(str(floorplan_input), raw_ply_path)
 
-        # Step 4: Denoising & Optimization
-        yield 0.90, "Cleaning mesh and optimizing .ply for WebGL viewer...", None
+        yield 0.90, "Optimizing .ply for the browser viewer...", None
         opt_ply_path = os.path.join(scene_dir, f"{scene_id}.ply")
         optimize_ply_for_web(
             raw_ply_path, opt_ply_path, voxel_size=tsdf_voxel_size
@@ -152,7 +145,7 @@ class MockHouseCrafterBridge(BaseHouseCrafterBridge):
         duration = time.time() - start_time
         meta = {
             "scene_id": scene_id,
-            "inference_mode": "mock",
+            "inference_mode": "floorplan_lift",
             "duration_seconds": round(duration, 2),
             "num_views": len(rgb_paths),
             "ddim_steps": num_steps,
@@ -160,9 +153,9 @@ class MockHouseCrafterBridge(BaseHouseCrafterBridge):
             "depth_threshold": depth_threshold,
             "tsdf_voxel_size": tsdf_voxel_size,
             "seed": seed,
+            "source_image": str(floorplan_input),
             **get_ply_metadata(opt_ply_path),
         }
-
         result = GenerationResult(
             scene_id=scene_id,
             ply_path=opt_ply_path,
@@ -172,8 +165,7 @@ class MockHouseCrafterBridge(BaseHouseCrafterBridge):
             metadata=meta,
             status="success",
         )
-
-        yield 1.0, f"Done in {duration:.1f}s! 3D scene ready.", result
+        yield 1.0, f"Done in {duration:.1f}s. 3D scene matches your floorplan.", result
 
 
 class HouseCrafterBridge(BaseHouseCrafterBridge):

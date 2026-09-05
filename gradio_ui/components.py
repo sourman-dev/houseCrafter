@@ -31,41 +31,56 @@ def create_header_html(
     return html
 
 
-def build_input_components(
-    preset_loader: PresetLoader
-) -> Tuple[gr.Radio, gr.Image, gr.Dropdown, gr.Image, gr.Group, gr.Group]:
-    """Build the 2D floorplan input controls (Upload and Preset selector)."""
+def build_input_components(preset_loader: PresetLoader):
+    """Build floorplan inputs: URL, upload, and presets."""
     presets = preset_loader.get_presets()
     preset_choices = [(p["label"], p["id"]) for p in presets]
     default_preset_id = presets[0]["id"] if presets else None
     default_preset_img = presets[0]["image_path"] if presets else None
 
     input_mode_radio = gr.Radio(
-        choices=["Upload Custom 2D Floorplan", "Choose from Preset Samples"],
-        value="Choose from Preset Samples",
-        label="Input Method",
-        interactive=True
+        choices=[
+            "Paste image URL",
+            "Upload image",
+            "Preset sample",
+        ],
+        value="Paste image URL",
+        label="Input method",
+        interactive=True,
     )
+
+    with gr.Group(visible=True) as url_group:
+        url_box = gr.Textbox(
+            label="Floorplan image URL",
+            placeholder="https://i.pinimg.com/...jpg  or any PNG/JPG URL",
+            lines=1,
+        )
+        fetch_btn = gr.Button("Load image from URL", variant="secondary")
+        url_preview = gr.Image(
+            type="filepath",
+            label="Preview",
+            interactive=False,
+        )
 
     with gr.Group(visible=False) as upload_group:
         custom_image_input = gr.Image(
             type="filepath",
-            label="Upload 2D Ground Floor Plan (PNG / JPG)",
-            interactive=True
+            label="Upload 2D ground floor plan (PNG / JPG)",
+            interactive=True,
         )
 
-    with gr.Group(visible=True) as preset_group:
+    with gr.Group(visible=False) as preset_group:
         preset_dropdown = gr.Dropdown(
             choices=preset_choices,
             value=default_preset_id,
-            label="Select Preset Scene",
-            interactive=True
+            label="Select preset scene",
+            interactive=True,
         )
         preset_preview_image = gr.Image(
             value=default_preset_img,
             type="filepath",
-            label="Selected Floorplan Preview",
-            interactive=False
+            label="Selected floorplan preview",
+            interactive=False,
         )
 
     return (
@@ -74,7 +89,11 @@ def build_input_components(
         preset_dropdown,
         preset_preview_image,
         upload_group,
-        preset_group
+        preset_group,
+        url_group,
+        url_box,
+        url_preview,
+        fetch_btn,
     )
 
 
