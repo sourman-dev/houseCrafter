@@ -89,9 +89,19 @@ else
   echo "  SKIP pytorch3d wheel"
 fi
 
+echo "[*] torch-scatter (pyg wheel for torch 2.1 cu121)..."
+if "${PY}" -m pip install -q torch-scatter \
+  -f https://data.pyg.org/whl/torch-2.1.0+cu121.html
+then
+  echo "  OK  torch-scatter"
+else
+  try_install torch-scatter
+fi
+try_install pandas
+
 "${PY}" - <<'PY'
 import importlib
-for name in ("numpy", "torch", "open3d", "transformers", "pytorch3d"):
+for name in ("numpy", "torch", "open3d", "transformers", "pytorch3d", "torch_scatter"):
     try:
         m = importlib.import_module(name)
         extra = ""
@@ -103,6 +113,6 @@ for name in ("numpy", "torch", "open3d", "transformers", "pytorch3d"):
 PY
 
 echo "============================================================"
-echo " Need: numpy 1.26, torch 2.1.2 cuda True, pytorch3d ok"
-echo " Then Step 5 gdown + Step 6 generate_scene.py"
+echo " Need: numpy 1.26, torch 2.1.2 cuda True, pytorch3d, torch_scatter"
+echo " Then Step 5 cache + Step 6 generate_scene.py"
 echo "============================================================"
