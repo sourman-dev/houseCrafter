@@ -740,40 +740,77 @@ if __name__ == "__main__":
         inverse_ddim=ddim_inversion,
         vae_ft="../ckpts/vae-ft-mse-840000-ema-pruned.ckpt",
     )
-    depth_model = torch.hub.load(
-        "lpiccinelli-eth/UniDepth",
-        "UniDepth",
-        version="v1",
-        backbone="ViTL14",
-        pretrained=True,
-        trust_repo=True,
-        # force_reload=True,
-    ).to(device)
+    def _patch_unidepth_jit(hub_root):
+        for dirpath, _, files in os.walk(hub_root):
+            for fn in files:
+                if not fn.endswith(".py"):
+                    continue
+                path = os.path.join(dirpath, fn)
+                with open(path, "r") as fh:
+                    txt = fh.read()
+                new = txt.replace("int | tuple[int, int]", "int")
+                new = new.replace("tuple[int, int] | int", "int")
+                if new != txt:
+                    with open(path, "w") as fh:
+                        fh.write(new)
+
+    try:
+        depth_model = torch.hub.load(
+            "lpiccinelli-eth/UniDepth",
+            "UniDepth",
+            version="v1",
+            backbone="ViTL14",
+            pretrained=True,
+            trust_repo=True,
+        )
+    except Exception as exc:
+        print(f"[Notice] UniDepth hub load failed ({exc}); patching JIT types")
+        hub_root = os.path.join(
+            torch.hub.get_dir(), "lpiccinelli-eth_UniDepth_main"
+        )
+        _patch_unidepth_jit(hub_root)
+        depth_model = torch.hub.load(
+            hub_root,
+            "UniDepth",
+            source="local",
+            version="v1",
+            backbone="ViTL14",
+            pretrained=True,
+            trust_repo=True,
+        )
+    depth_model = depth_model.to(device)
     torch_renderer = Torch3DRenderer(image_size, device, radius=3.0)
 
-    val_scene_ids = sorted(json.load(open(cfg.data.params.datasets_cfg[0].params.val_scene_ids, "r")))
-    val_scene_ids = val_scene_ids[args.start : args.end]
-    val_scene_ids = val_scene_ids[args.offset :: args.step]
+    val_json = cfg.data.params.datasets_cfg[0].params.val_scene_ids
+    if os.path.exists(val_json):
+        val_scene_ids = sorted(json.load(open(val_json, "r")))
+        val_scene_ids = val_scene_ids[args.start : args.end]
+        val_scene_ids = val_scene_ids[args.offset :: args.step]
+    else:
+        print(f"[Notice] missing {val_json}; using built-in scene list")
+        val_scene_ids = []
 
-    val_scene_ids = [
-        '64cce374-230b-4fe2-8240-69f81c8cfb33',
-        '644f3b6e-ad35-4254-92ea-626e3e8a65b1', 
-        '65aa5c84-5d84-4785-adf8-0000c91aa79e',
-        '64cce374-230b-4fe2-8240-69f81c8cfb33',
-        '651c37ce-c0cd-47c6-843f-3aa192235e39',
-        '644dba87-0d65-4897-912c-38185791b3c2',
-        '6a03badb-61ab-4e22-9564-de2fd2ed1938',
-        '6b56575f-a746-4062-8296-b566d5de7b60',
-        '64b7a725-7b94-443b-a8b1-d582ba1cd3d9',
-        '6ae5c274-8d8c-4832-878c-ea4f74082dfa',
-        '64e2e0ba-3769-479d-81d7-c870da620b07',
-        '6634054e-6ff5-43d2-958f-a80bb7eee357', 
-        '6b5bb08d-7e14-4206-8014-685580c674b1',
-        '6bb9d1bf-8fd5-4278-b4a0-38ea346dafcd',
-        '6be7ef9a-98d9-4d32-8b0c-c0d2b1ca3bbe',
-        '6c2d1fd6-0cb5-4382-9788-c0d95431a6ec',
-        '64ac0b68-fc6c-490d-ab08-6f45e947b4a7',
-        ]
+    demo_ids = [
+        "64cce374-230b-4fe2-8240-69f81c8cfb33",
+        "644f3b6e-ad35-4254-92ea-626e3e8a65b1",
+        "65aa5c84-5d84-4785-adf8-0000c91aa79e",
+        "651c37ce-c0cd-47c6-843f-3aa192235e39",
+        "644dba87-0d65-4897-912c-38185791b3c2",
+        "6a03badb-61ab-4e22-9564-de2fd2ed1938",
+        "6b56575f-a746-4062-8296-b566d5de7b60",
+        "64b7a725-7b94-443b-a8b1-d582ba1cd3d9",
+        "6ae5c274-8d8c-4832-878c-ea4f74082dfa",
+        "64e2e0ba-3769-479d-81d7-c870da620b07",
+        "6634054e-6ff5-43d2-958f-a80bb7eee357",
+        "6b5bb08d-7e14-4206-8014-685580c674b1",
+        "6bb9d1bf-8fd5-4278-b4a0-38ea346dafcd",
+        "6be7ef9a-98d9-4d32-8b0c-c0d2b1ca3bbe",
+        "6c2d1fd6-0cb5-4382-9788-c0d2b1ca36ec",
+        "64ac0b68-fc6c-490d-ab08-6f45e947b4a7",
+    ]
+    if not val_scene_ids:
+        val_scene_ids = demo_ids[args.start : args.end] or demo_ids[:1]
+
     for scene_id in tqdm(val_scene_ids):
         if check_completed2(out_dir, scene_id):
             print(f"scene {scene_id} is already completed")
@@ -789,7 +826,7 @@ if __name__ == "__main__":
             depth_model=depth_model,
             torch_renderer=torch_renderer,
             max_view=60,
-            cache_img=False,  ######################
+            cache_img=False,
             ddim_inversion=ddim_inversion,
         )
 
