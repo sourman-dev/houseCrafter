@@ -44,6 +44,22 @@ import json
 import zlib
 
 import lmdb
+
+_LMDB_ENVS = {}
+_lmdb_open = lmdb.open
+
+
+def _cached_lmdb_open(path, *args, **kwargs):
+    key = os.path.abspath(path)
+    env = _LMDB_ENVS.get(key)
+    if env is not None:
+        return env
+    env = _lmdb_open(path, *args, **kwargs)
+    _LMDB_ENVS[key] = env
+    return env
+
+
+lmdb.open = _cached_lmdb_open
 import matplotlib.pyplot as plt
 import networkx as nx
 from cfg_util import instantiate_from_config
