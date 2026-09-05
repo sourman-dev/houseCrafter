@@ -49,12 +49,27 @@ _LMDB_ENVS = {}
 _lmdb_open = lmdb.open
 
 
+class _PinnedLmdbEnv:
+    """Reuse one Environment per path; ignore close() from load_frames_data."""
+
+    __slots__ = ("_env",)
+
+    def __init__(self, env):
+        self._env = env
+
+    def close(self):
+        return None
+
+    def __getattr__(self, name):
+        return getattr(self._env, name)
+
+
 def _cached_lmdb_open(path, *args, **kwargs):
     key = os.path.abspath(path)
     env = _LMDB_ENVS.get(key)
     if env is not None:
         return env
-    env = _lmdb_open(path, *args, **kwargs)
+    env = _PinnedLmdbEnv(_lmdb_open(path, *args, **kwargs))
     _LMDB_ENVS[key] = env
     return env
 
