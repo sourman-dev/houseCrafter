@@ -20,17 +20,27 @@ PY
 
 if [ ! -x "${ROOT}/bin/micromamba" ]; then
   echo "[*] Installing micromamba into ${ROOT}..."
-  mkdir -p "${ROOT}"
+  mkdir -p "${ROOT}/bin"
   curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest \
-    | tar -xj -C "${ROOT}" --strip-components=1 bin/micromamba
+    | tar -xj -C "${ROOT}" bin/micromamba
+  chmod +x "${ROOT}/bin/micromamba"
 fi
 
 export MAMBA_ROOT_PREFIX="${ROOT}"
 MM="${ROOT}/bin/micromamba"
+if [ ! -x "${MM}" ]; then
+  echo "[FAIL] micromamba missing at ${MM}"
+  ls -la "${ROOT}" "${ROOT}/bin" || true
+  exit 1
+fi
 
 if [ ! -x "${BIN}" ]; then
   echo "[*] Creating env ${ENV_NAME} with Python 3.10..."
   "${MM}" create -y -p "${ROOT}/envs/${ENV_NAME}" python=3.10 pip -c conda-forge
+fi
+if [ ! -x "${BIN}" ]; then
+  echo "[FAIL] sidecar python missing at ${BIN}"
+  exit 1
 fi
 
 echo "[*] Sidecar python:"
